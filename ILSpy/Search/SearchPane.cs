@@ -316,65 +316,101 @@ namespace ICSharpCode.ILSpy
 
 			AbstractSearchStrategy GetSearchStrategy()
 			{
-				if (searchTerm.Length == 1) {
-					if (searchTerm[0].StartsWith("tm:", StringComparison.Ordinal))
-						return new MemberSearchStrategy(language, apiVisibility, searchTerm[0].Substring(3), resultQueue);
+				return GetSearchStrategy(searchTerm, resultQueue);
+			}
+			AbstractSearchStrategy GetSearchStrategy(string[] terms, IProducerConsumerCollection<SearchResult> resultCollection)
+			{
+				AbstractSearchStrategy strategy;
+				if (terms.Length == 1) {
+					strategy = GetSingleSearchStrategy(terms[0], resultCollection);
+					if (strategy != null)
+						return strategy;
+				} else {
+					int index = Array.IndexOf(terms, "in:");
+					if (index >= 0) {
+						var term = new string[index];
+						Array.Copy(terms, 0, term, 0, term.Length);
 
-					if (searchTerm[0].StartsWith("t:", StringComparison.Ordinal))
-						return new MemberSearchStrategy(language, apiVisibility, searchTerm[0].Substring(2), resultQueue, MemberSearchKind.Type);
+						var scopingStrategy = new ScopedSearchStrategy();
+						for (int i = index + 1; i < terms.Length; i++) {
+							var scopeStrategy = GetSearchStrategy(new[] { terms[i] }, null);
+							if (scopeStrategy == null)
+								return scopingStrategy;
+							scopingStrategy.Scope.Add(scopeStrategy);
+						}
 
-					if (searchTerm[0].StartsWith("m:", StringComparison.Ordinal))
-						return new MemberSearchStrategy(language, apiVisibility, searchTerm[0].Substring(2), resultQueue, MemberSearchKind.Member);
+						var scopingQueue = new FilteredProducerConsumerCollection<SearchResult>(resultCollection, scopingStrategy.IsMatch);
+						scopingStrategy.Strategy = GetSearchStrategy(term, scopingQueue);
 
-					if (searchTerm[0].StartsWith("md:", StringComparison.Ordinal))
-						return new MemberSearchStrategy(language, apiVisibility, searchTerm[0].Substring(3), resultQueue, MemberSearchKind.Method);
-
-					if (searchTerm[0].StartsWith("f:", StringComparison.Ordinal))
-						return new MemberSearchStrategy(language, apiVisibility, searchTerm[0].Substring(2), resultQueue, MemberSearchKind.Field);
-
-					if (searchTerm[0].StartsWith("p:", StringComparison.Ordinal))
-						return new MemberSearchStrategy(language, apiVisibility, searchTerm[0].Substring(2), resultQueue, MemberSearchKind.Property);
-
-					if (searchTerm[0].StartsWith("e:", StringComparison.Ordinal))
-						return new MemberSearchStrategy(language, apiVisibility, searchTerm[0].Substring(2), resultQueue, MemberSearchKind.Event);
-
-					if (searchTerm[0].StartsWith("c:", StringComparison.Ordinal))
-						return new LiteralSearchStrategy(language, apiVisibility, resultQueue, searchTerm[0].Substring(2));
-
-					if (searchTerm[0].StartsWith("@", StringComparison.Ordinal))
-						return new MetadataTokenSearchStrategy(language, apiVisibility, resultQueue, searchTerm[0].Substring(1));
-
-					if (searchTerm[0].StartsWith("r:", StringComparison.Ordinal))
-						return new ResourceSearchStrategy(apiVisibility, resultQueue, searchTerm[0].Substring(2));
-
-					if (searchTerm[0].StartsWith("a:", StringComparison.Ordinal))
-						return new AssemblySearchStrategy(resultQueue, searchTerm[0].Substring(2));
+						return scopingStrategy;
+					}
 				}
 
+				return GetMultiSearchStrategy(terms, resultCollection);
+			}
+			AbstractSearchStrategy GetSingleSearchStrategy(string searchTerm, IProducerConsumerCollection<SearchResult> resultCollection)
+			{
+				if (searchTerm.StartsWith("tm:", StringComparison.Ordinal))
+					return new MemberSearchStrategy(language, apiVisibility, searchTerm.Substring(3), resultCollection);
+
+				if (searchTerm.StartsWith("t:", StringComparison.Ordinal))
+					return new MemberSearchStrategy(language, apiVisibility, searchTerm.Substring(2), resultCollection, MemberSearchKind.Type);
+
+				if (searchTerm.StartsWith("m:", StringComparison.Ordinal))
+					return new MemberSearchStrategy(language, apiVisibility, searchTerm.Substring(2), resultCollection, MemberSearchKind.Member);
+
+				if (searchTerm.StartsWith("md:", StringComparison.Ordinal))
+					return new MemberSearchStrategy(language, apiVisibility, searchTerm.Substring(3), resultCollection, MemberSearchKind.Method);
+
+				if (searchTerm.StartsWith("f:", StringComparison.Ordinal))
+					return new MemberSearchStrategy(language, apiVisibility, searchTerm.Substring(2), resultCollection, MemberSearchKind.Field);
+
+				if (searchTerm.StartsWith("p:", StringComparison.Ordinal))
+					return new MemberSearchStrategy(language, apiVisibility, searchTerm.Substring(2), resultCollection, MemberSearchKind.Property);
+
+				if (searchTerm.StartsWith("e:", StringComparison.Ordinal))
+					return new MemberSearchStrategy(language, apiVisibility, searchTerm.Substring(2), resultCollection, MemberSearchKind.Event);
+
+				if (searchTerm.StartsWith("c:", StringComparison.Ordinal))
+					return new LiteralSearchStrategy(language, apiVisibility, resultCollection, searchTerm.Substring(2));
+
+				if (searchTerm.StartsWith("@", StringComparison.Ordinal))
+					return new MetadataTokenSearchStrategy(language, apiVisibility, resultCollection, searchTerm.Substring(1));
+
+				if (searchTerm.StartsWith("r:", StringComparison.Ordinal))
+					return new ResourceSearchStrategy(apiVisibility, resultCollection, searchTerm.Substring(2));
+
+				if (searchTerm.StartsWith("a:", StringComparison.Ordinal))
+					return new AssemblySearchStrategy(resultCollection, searchTerm.Substring(2));
+
+				return null;
+			}
+			AbstractSearchStrategy GetMultiSearchStrategy(string[] searchTerm, IProducerConsumerCollection<SearchResult> resultCollection)
+			{
 				switch (searchMode)
 				{
 					case SearchMode.TypeAndMember:
-						return new MemberSearchStrategy(language, apiVisibility, resultQueue, searchTerm);
+						return new MemberSearchStrategy(language, apiVisibility, resultCollection, searchTerm);
 					case SearchMode.Type:
-						return new MemberSearchStrategy(language, apiVisibility, resultQueue, searchTerm, MemberSearchKind.Type);
+						return new MemberSearchStrategy(language, apiVisibility, resultCollection, searchTerm, MemberSearchKind.Type);
 					case SearchMode.Member:
-						return new MemberSearchStrategy(language, apiVisibility, resultQueue, searchTerm, MemberSearchKind.Member);
+						return new MemberSearchStrategy(language, apiVisibility, resultCollection, searchTerm, MemberSearchKind.Member);
 					case SearchMode.Literal:
-						return new LiteralSearchStrategy(language, apiVisibility, resultQueue, searchTerm);
+						return new LiteralSearchStrategy(language, apiVisibility, resultCollection, searchTerm);
 					case SearchMode.Method:
-						return new MemberSearchStrategy(language, apiVisibility, resultQueue, searchTerm, MemberSearchKind.Method);
+						return new MemberSearchStrategy(language, apiVisibility, resultCollection, searchTerm, MemberSearchKind.Method);
 					case SearchMode.Field:
-						return new MemberSearchStrategy(language, apiVisibility, resultQueue, searchTerm, MemberSearchKind.Field);
+						return new MemberSearchStrategy(language, apiVisibility, resultCollection, searchTerm, MemberSearchKind.Field);
 					case SearchMode.Property:
-						return new MemberSearchStrategy(language, apiVisibility, resultQueue, searchTerm, MemberSearchKind.Property);
+						return new MemberSearchStrategy(language, apiVisibility, resultCollection, searchTerm, MemberSearchKind.Property);
 					case SearchMode.Event:
-						return new MemberSearchStrategy(language, apiVisibility, resultQueue, searchTerm, MemberSearchKind.Event);
+						return new MemberSearchStrategy(language, apiVisibility, resultCollection, searchTerm, MemberSearchKind.Event);
 					case SearchMode.Token:
-						return new MetadataTokenSearchStrategy(language, apiVisibility, resultQueue, searchTerm);
+						return new MetadataTokenSearchStrategy(language, apiVisibility, resultCollection, searchTerm);
 					case SearchMode.Resource:
-						return new ResourceSearchStrategy(apiVisibility, resultQueue, searchTerm);
+						return new ResourceSearchStrategy(apiVisibility, resultCollection, searchTerm);
 					case SearchMode.Assembly:
-						return new AssemblySearchStrategy(resultQueue, searchTerm);
+						return new AssemblySearchStrategy(resultCollection, searchTerm);
 				}
 
 				return null;

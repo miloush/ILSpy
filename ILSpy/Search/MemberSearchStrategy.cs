@@ -88,6 +88,14 @@ namespace ICSharpCode.ILSpy.Search
 				}
 			}
 		}
+
+		public override bool IsMatch(SearchResult result)
+		{
+			if (searchKind == MemberSearchKind.Type)
+				return base.IsMatch(result);
+
+			return false;
+		}
 	}
 
 	enum MemberSearchKind

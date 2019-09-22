@@ -33,6 +33,15 @@ namespace ICSharpCode.ILSpy.Search
 				OnFoundResult(module);
 		}
 
+		public override bool IsMatch(PEFile module)
+		{
+			return IsMatch(module.FullName);
+		}
+		public override bool IsMatch(SearchResult result)
+		{
+			return IsMatch(result.Assembly);
+		}
+
 		void OnFoundResult(PEFile module)
 		{
 			var result = new AssemblySearchResult {

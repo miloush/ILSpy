@@ -83,6 +83,19 @@ namespace ICSharpCode.ILSpy.Search
 			return 1.0f / text.Length;
 		}
 
+		public override bool IsMatch(SearchResult result)
+		{
+			if (result.Reference is IEntity member) {
+				var typeDef = member.DeclaringTypeDefinition;
+				if (typeDef != null) {
+					var name = fullNameSearch ? typeDef.FullTypeName.ToILNameString(omitGenerics) : typeDef.Name;
+					return IsMatch(name);
+				}
+			}
+
+			return false;
+		}
+
 		string GetLanguageSpecificName(IEntity member)
 		{
 			switch (member) {

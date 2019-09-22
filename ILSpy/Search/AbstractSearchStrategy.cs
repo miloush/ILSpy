@@ -39,6 +39,8 @@ namespace ICSharpCode.ILSpy.Search
 		}
 
 		public abstract void Search(PEFile module, CancellationToken cancellationToken);
+		public virtual bool IsMatch(PEFile module) => true;
+		public abstract bool IsMatch(SearchResult result);
 
 		protected virtual bool IsMatch(string name)
 		{

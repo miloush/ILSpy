@@ -69,5 +69,13 @@ namespace ICSharpCode.ILSpy.Search
 					break;
 			}
 		}
+
+		public override bool IsMatch(SearchResult result)
+		{
+			if (searchTermToken.Kind == HandleKind.TypeDefinition)
+				return base.IsMatch(result);
+
+			return false;
+		}
 	}
 }

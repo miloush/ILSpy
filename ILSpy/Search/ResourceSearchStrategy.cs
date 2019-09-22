@@ -72,6 +72,14 @@ namespace ICSharpCode.ILSpy.Search
 				Search(module, resource, node, child, cancellationToken);
 		}
 
+		public override bool IsMatch(SearchResult result)
+		{
+			if (result is ResourceSearchResult resourceResult)
+				return IsMatch(resourceResult.Resource.Name);
+
+			return false;
+		}
+
 		void OnFoundResult(PEFile module, Resource resource, SharpTreeNode node, SharpTreeNode parent)
 		{
 			var name = (string)node.Text;

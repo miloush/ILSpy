@@ -207,6 +207,10 @@
     <Compile Include="Commands\RefreshCommand.cs" />
     <Compile Include="Commands\SaveCommand.cs" />
     <Compile Include="Search\ResourceSearchStrategy.cs" />
+    <Compile Include="Search\ScopedSearchStrategy.cs">
+      <SubType>Code</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Compile>
     <Compile Include="Search\SearchPane.cs">
       <DependentUpon>SearchPane.xaml</DependentUpon>
     </Compile>
