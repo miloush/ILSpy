@@ -2630,7 +2630,16 @@ namespace ICSharpCode.ILSpy.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Show public, private and internal.
+        ///   Looks up a localized string similar to Show _base members.
+        /// </summary>
+        public static string Show_baseMembers {
+            get {
+                return ResourceManager.GetString("Show_baseMembers", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Show public, private and _internal.
         /// </summary>
         public static string Show_internalTypesMembers {
             get {

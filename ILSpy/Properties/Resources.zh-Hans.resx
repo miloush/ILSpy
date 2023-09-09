@@ -890,6 +890,9 @@
   <data name="Show_allTypesAndMembers" xml:space="preserve">
     <value>显示所有类型和成员(_A)</value>
   </data>
+  <data name="Show_baseMembers" xml:space="preserve">
+    <value>显示基成员(_B)</value>
+  </data>
   <data name="Show_internalTypesMembers" xml:space="preserve">
     <value>显示内部类型和成员(_I)</value>
   </data>
