@@ -17,6 +17,7 @@
 // DEALINGS IN THE SOFTWARE.
 
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Windows.Media;
 
@@ -26,11 +27,15 @@ using SRM = System.Reflection.Metadata;
 
 namespace ICSharpCode.ILSpy.TreeNodes
 {
+	using System.ComponentModel;
+
 	using ICSharpCode.Decompiler.TypeSystem;
 	using ICSharpCode.ILSpyX;
 
 	public sealed class TypeTreeNode : ILSpyTreeNode, IMemberTreeNode
 	{
+		private bool? loadedInheritedMembers;
+
 		public TypeTreeNode(ITypeDefinition typeDefinition, AssemblyTreeNode parentAssemblyNode)
 		{
 			this.ParentAssemblyNode = parentAssemblyNode ?? throw new ArgumentNullException(nameof(parentAssemblyNode));
@@ -84,13 +89,35 @@ namespace ICSharpCode.ILSpy.TreeNodes
 			}
 		}
 
+		protected override void Settings_Changed(object sender, PropertyChangedEventArgs e)
+		{
+			base.Settings_Changed(sender, e);
+			if (sender is LanguageSettings languageSettings)
+			{
+				if (loadedInheritedMembers != null && loadedInheritedMembers != languageSettings.ShowBaseApi)
+				{
+					this.Children.Clear();
+					if (IsVisible)
+						LoadChildren();
+					else
+						LazyLoading = true;
+				}
+			}
+		}
+
 		protected override void LoadChildren()
 		{
 			if (TypeDefinition.DirectBaseTypes.Any())
 				this.Children.Add(new BaseTypesTreeNode(ParentAssemblyNode.LoadedAssembly.GetMetadataFileOrNull(), TypeDefinition));
 			if (!TypeDefinition.IsSealed)
 				this.Children.Add(new DerivedTypesTreeNode(ParentAssemblyNode.AssemblyList, TypeDefinition));
-			foreach (var nestedType in TypeDefinition.NestedTypes.OrderBy(t => t.Name, NaturalStringComparer.Instance))
+			loadedInheritedMembers = LanguageSettings?.ShowBaseApi;
+			IEnumerable<ITypeDefinition> nestedTypes = GetMembers(TypeDefinition, t => t.NestedTypes, LanguageSettings?.ShowBaseApi);
+			IEnumerable<IField> fields = GetMembers(TypeDefinition, t => t.Fields, LanguageSettings?.ShowBaseApi);
+			IEnumerable<IProperty> properties = GetMembers(TypeDefinition, t => t.Properties, LanguageSettings?.ShowBaseApi);
+			IEnumerable<IEvent> events = GetMembers(TypeDefinition, t => t.Events, LanguageSettings?.ShowBaseApi);
+			IEnumerable<IMethod> methods = GetMembers(TypeDefinition, t => t.Methods, LanguageSettings?.ShowBaseApi);
+			foreach (var nestedType in nestedTypes.OrderBy(t => t.Name, NaturalStringComparer.Instance))
 			{
 				this.Children.Add(new TypeTreeNode(nestedType, ParentAssemblyNode));
 			}
@@ -104,25 +131,35 @@ namespace ICSharpCode.ILSpy.TreeNodes
 			}
 			else
 			{
-				foreach (var field in TypeDefinition.Fields.OrderBy(f => f.Name, NaturalStringComparer.Instance))
+				foreach (var field in fields.OrderBy(f => f.Name, NaturalStringComparer.Instance))
 				{
 					this.Children.Add(new FieldTreeNode(field));
 				}
 			}
-			foreach (var property in TypeDefinition.Properties.OrderBy(p => p.Name, NaturalStringComparer.Instance))
+			foreach (var property in properties.OrderBy(p => p.Name, NaturalStringComparer.Instance))
 			{
 				this.Children.Add(new PropertyTreeNode(property));
 			}
-			foreach (var ev in TypeDefinition.Events.OrderBy(e => e.Name, NaturalStringComparer.Instance))
+			foreach (var ev in events.OrderBy(e => e.Name, NaturalStringComparer.Instance))
 			{
 				this.Children.Add(new EventTreeNode(ev));
 			}
-			foreach (var method in TypeDefinition.Methods.OrderBy(m => m.Name, NaturalStringComparer.Instance))
+			foreach (var method in methods.OrderBy(m => m.Name, NaturalStringComparer.Instance))
 			{
 				if (method.MetadataToken.IsNil)
 					continue;
 				this.Children.Add(new MethodTreeNode(method));
 			}
+		}
+
+		private IEnumerable<TMember> GetMembers<TMember>(ITypeDefinition type, Func<ITypeDefinition, IEnumerable<TMember>> selector, bool? includeInherited)
+		{
+			IEnumerable<TMember> allMembers = selector(type);
+			if (includeInherited == true)
+				foreach (var baseType in type.GetNonInterfaceBaseTypes().Reverse().Select(t => t.GetDefinition()))
+					if (baseType != null && baseType != type)
+						allMembers = allMembers.Concat(selector(baseType));
+			return allMembers;
 		}
 
 		public override bool CanExpandRecursively => true;

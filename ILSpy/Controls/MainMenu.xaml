@@ -21,6 +21,9 @@
 			          IsChecked="{Binding SessionSettings.LanguageSettings.ApiVisPublicAndInternal}" />
 			<MenuItem Header="{x:Static properties:Resources.Show_allTypesAndMembers}" IsCheckable="True"
 			          IsChecked="{Binding SessionSettings.LanguageSettings.ApiVisAll}" />
+			<MenuItem Header="{x:Static properties:Resources.Show_baseMembers}" IsCheckable="True"
+			          IsChecked="{Binding SessionSettings.LanguageSettings.ShowBaseApi}" />
+
 			<Separator />
 			<MenuItem Header="{x:Static properties:Resources.Theme}" ItemsSource="{x:Static themes:ThemeManager.AllThemes}">
 				<MenuItem.ItemContainerStyle>

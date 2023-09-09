@@ -44,7 +44,7 @@ namespace ICSharpCode.ILSpy.TreeNodes
 			MessageBus<SettingsChangedEventArgs>.Subscribers += (sender, e) => Settings_Changed(sender, e);
 		}
 
-		LanguageSettings LanguageSettings => SettingsService.SessionSettings.LanguageSettings;
+		public LanguageSettings LanguageSettings => SettingsService.SessionSettings.LanguageSettings;
 
 		public Language Language => LanguageService.Language;
 
