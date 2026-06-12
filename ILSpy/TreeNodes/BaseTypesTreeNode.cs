@@ -26,6 +26,7 @@ using ICSharpCode.ILSpyX;
 using ICSharpCode.ILSpyX.TreeView;
 
 using ICSharpCode.ILSpy.Languages;
+using ICSharpCode.Decompiler.Output;
 
 namespace ICSharpCode.ILSpy.TreeNodes
 {
@@ -79,7 +80,8 @@ namespace ICSharpCode.ILSpy.TreeNodes
 		{
 			EnsureLazyChildren();
 			foreach (var child in Children.OfType<ILSpyTreeNode>())
-				child.Decompile(language, output, options);
+				if (child is IMemberTreeNode { Member: ITypeDefinition childType })
+					language.WriteCommentLine(output, language.TypeToString(childType, ConversionFlags.UseFullyQualifiedEntityNames));
 		}
 	}
 }
