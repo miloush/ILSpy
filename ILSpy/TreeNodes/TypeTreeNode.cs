@@ -17,6 +17,7 @@
 // DEALINGS IN THE SOFTWARE.
 
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Reflection.Metadata;
 
@@ -25,7 +26,6 @@ using ICSharpCode.Decompiler.Metadata;
 using ICSharpCode.Decompiler.Output;
 using ICSharpCode.Decompiler.TypeSystem;
 using ICSharpCode.ILSpyX;
-
 using ICSharpCode.ILSpy;
 using ICSharpCode.ILSpy.AppEnv;
 using ICSharpCode.ILSpy.AssemblyTree;
@@ -37,6 +37,8 @@ namespace ICSharpCode.ILSpy.TreeNodes
 	{
 		readonly TypeDefinitionHandle handle;
 		readonly MetadataFile module;
+
+		bool? loadedInheritedMembers;
 
 		public TypeDefinitionHandle Handle => handle;
 		public MetadataFile Module => module;
@@ -97,6 +99,11 @@ namespace ICSharpCode.ILSpy.TreeNodes
 
 		public override FilterResult Filter(LanguageSettings settings)
 		{
+			if (loadedInheritedMembers != settings.ShowBaseApi && IsVisible)
+			{
+				ReloadChildren();
+			}
+
 			if (settings.ShowApiLevel == ApiVisibility.PublicOnly && !IsPublicAPI)
 				return FilterResult.Hidden;
 			var typeDef = ResolveTypeDefinition();
@@ -163,7 +170,14 @@ namespace ICSharpCode.ILSpy.TreeNodes
 			if (assemblyList != null && CanHaveDerivedTypes(typeDef))
 				Children.Add(new DerivedTypesTreeNode(assemblyList, typeDef));
 
-			foreach (var nestedType in typeDef.NestedTypes
+			loadedInheritedMembers = CurrentLanguageSettings?.ShowBaseApi;
+			IEnumerable<ITypeDefinition> nestedTypes = GetMembers(typeDef, t => t.NestedTypes, loadedInheritedMembers);
+			IEnumerable<IField> fields = GetMembers(typeDef, t => t.Fields, loadedInheritedMembers);
+			IEnumerable<IProperty> properties = GetMembers(typeDef, t => t.Properties, loadedInheritedMembers);
+			IEnumerable<IEvent> events = GetMembers(typeDef, t => t.Events, loadedInheritedMembers);
+			IEnumerable<IMethod> methods = GetMembers(typeDef, t => t.Methods, loadedInheritedMembers);
+
+			foreach (var nestedType in nestedTypes
 				.OrderBy(t => t.Name, NaturalStringComparer.Instance))
 			{
 				Children.Add(new TypeTreeNode((TypeDefinitionHandle)nestedType.MetadataToken, module));
@@ -184,24 +198,40 @@ namespace ICSharpCode.ILSpy.TreeNodes
 			}
 
 			// Enums look more useful in declaration order than alphabetical.
-			var fields = typeDef.Kind == TypeKind.Enum
-				? typeDef.Fields
-				: typeDef.Fields.OrderBy(f => f.Name, NaturalStringComparer.Instance);
+			if (typeDef.Kind != TypeKind.Enum)
+				fields = fields.OrderBy(f => f.Name, NaturalStringComparer.Instance);
+
 			foreach (var field in fields)
 				Children.Add(new FieldTreeNode(field));
 
-			foreach (var prop in typeDef.Properties.OrderBy(p => p.Name, NaturalStringComparer.Instance))
+			foreach (var prop in properties.OrderBy(p => p.Name, NaturalStringComparer.Instance))
 				Children.Add(new PropertyTreeNode(prop));
 
-			foreach (var ev in typeDef.Events.OrderBy(e => e.Name, NaturalStringComparer.Instance))
+			foreach (var ev in events.OrderBy(e => e.Name, NaturalStringComparer.Instance))
 				Children.Add(new EventTreeNode(ev));
 
-			foreach (var method in typeDef.Methods.OrderBy(m => m.Name, NaturalStringComparer.Instance))
+			foreach (var method in methods.OrderBy(m => m.Name, NaturalStringComparer.Instance))
 			{
-				if (method.MetadataToken.IsNil || method.IsAccessor)
+				if (method.MetadataToken.IsNil || method.IsAccessor)			
 					continue;
 				Children.Add(new MethodTreeNode(method));
 			}
+		}
+
+		private IEnumerable<TMember> GetMembers<TMember>(ITypeDefinition type, Func<ITypeDefinition, IEnumerable<TMember>> selector, bool? includeInherited)
+		{
+			IEnumerable<TMember> allMembers = selector(type);
+			if (includeInherited == true)
+			{
+				var typeSystem = new DecompilerTypeSystem(module, module.GetAssemblyResolver(),
+					TypeSystemOptions.Default | TypeSystemOptions.Uncached);
+
+				if (typeSystem.MainModule.ResolveEntity(handle) is ITypeDefinition resolvedType)
+					foreach (var baseType in resolvedType.GetNonInterfaceBaseTypes().Reverse().Select(t => t.GetDefinition()))
+						if (baseType != null && baseType != type)
+							allMembers = allMembers.Concat(selector(baseType));
+			}
+			return allMembers;
 		}
 	}
 }

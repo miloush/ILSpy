@@ -88,7 +88,18 @@ namespace ICSharpCode.ILSpy.TreeNodes
 		/// "Show metadata tokens". Mirrors WPF's <c>ILSpyTreeNode.GetSuffixString</c>; format
 		/// matches byte-for-byte so cross-tool grep on token strings keeps working.
 		/// </summary>
-		protected static string GetSuffixString(IMember member) => GetSuffixString(member.MetadataToken);
+		protected string GetSuffixString(IMember member) => GetSuffixString(member.MetadataToken) + GetTypeSuffixString(member);
+
+		private string GetTypeSuffixString(IMember member)
+		{
+			if (Parent is not TypeTreeNode typeNode)
+				return string.Empty;
+
+			if (member.DeclaringTypeDefinition?.MetadataToken == typeNode.Handle)
+				return string.Empty;
+
+			return $" ({member.DeclaringType.Name})";
+		}
 
 		protected static string GetSuffixString(EntityHandle handle)
 		{

@@ -80,7 +80,7 @@ namespace ICSharpCode.ILSpy.AssemblyTree
 
 		void OnLanguageSettingsChanged(object? sender, PropertyChangedEventArgs e)
 		{
-			if (e.PropertyName != nameof(LanguageSettings.ShowApiLevel))
+			if (e.PropertyName != nameof(LanguageSettings.ShowApiLevel) && e.PropertyName != nameof(LanguageSettings.ShowBaseApi))
 				return;
 			// Re-apply the API-level filter in place; the flattener drops anything newly hidden.
 			if (DataContext is AssemblyTreeModel { Root: ILSpyTreeNode root })

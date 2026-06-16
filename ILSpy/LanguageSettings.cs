@@ -36,6 +36,7 @@ namespace ICSharpCode.ILSpy
 		{
 			Parent = parent;
 			showApiLevel = (ApiVisibility?)(int?)element.Element("ShowAPILevel") ?? ApiVisibility.PublicAndInternal;
+			showBaseApi = (bool?)element.Element("ShowBaseAPI") ?? false;
 			languageId = (string?)element.Element("Language");
 			languageVersionId = (string?)element.Element("LanguageVersion");
 		}
@@ -47,6 +48,7 @@ namespace ICSharpCode.ILSpy
 			return new XElement(
 				"FilterSettings",
 				new XElement("ShowAPILevel", (int)ShowApiLevel),
+				new XElement("ShowBaseAPI", ShowBaseApi),
 				new XElement("Language", LanguageId),
 				new XElement("LanguageVersion", LanguageVersionId));
 		}
@@ -78,6 +80,18 @@ namespace ICSharpCode.ILSpy
 		public bool ApiVisAll {
 			get => showApiLevel == ApiVisibility.All;
 			set { if (value) ShowApiLevel = ApiVisibility.All; }
+		}
+
+		bool showBaseApi;
+
+		public bool ShowBaseApi {
+			get => showBaseApi;
+			set {
+				if (SetProperty(ref showBaseApi, value))
+				{
+					OnPropertyChanged(nameof(ShowBaseApi));
+				}
+			}
 		}
 
 		[ObservableProperty]

@@ -151,6 +151,10 @@ public static class MainMenu
 
 		view.Items.Add(new NativeMenuItemSeparator());
 
+		view.Items.Add(MakeCheckBox(Resources.Show_baseMembers, languageSettings, nameof(LanguageSettings.ShowBaseApi)));
+
+		view.Items.Add(new NativeMenuItemSeparator());
+
 		var theme = new NativeMenuItem {
 			Header = Resources.Theme,
 			Menu = new NativeMenu(),
@@ -177,6 +181,26 @@ public static class MainMenu
 		});
 		var property = source.GetType().GetProperty(path);
 		item.Command = new RelayCommand(() => property?.SetValue(source, true));
+		return item;
+	}
+
+	static NativeMenuItem MakeCheckBox(string header, object source, string path)
+	{
+		var item = new NativeMenuItem {
+			Header = header,
+			ToggleType = MenuItemToggleType.CheckBox,
+		};
+		// IsChecked is purely for *displaying* the checkmark (OneWay). The write
+		// path lives in Command, because Avalonia's macOS NativeMenu bridge maps
+		// NativeMenuItem -> NSMenuItem only when Command != null; without it the
+		// item gets greyed out by NSMenuValidation and no click ever reaches the
+		// IsChecked binding.
+		item.Bind(NativeMenuItem.IsCheckedProperty, new Binding(path) {
+			Source = source,
+			Mode = BindingMode.OneWay,
+		});
+		var property = source.GetType().GetProperty(path);
+		item.Command = new RelayCommand(() => property?.SetValue(source, property?.GetValue(source) is true ? false : true));
 		return item;
 	}
 
